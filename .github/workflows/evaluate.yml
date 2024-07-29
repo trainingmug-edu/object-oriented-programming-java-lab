@@ -28,7 +28,7 @@ jobs:
           distribution: 'adopt'
           java-version: '18'
       - name: Install yq
-        run: snap install yq
+        run: sudo snap install yq
       - name: Download the additional test files
         env:
           TEST_FILES: ${{ inputs.test_files }}
