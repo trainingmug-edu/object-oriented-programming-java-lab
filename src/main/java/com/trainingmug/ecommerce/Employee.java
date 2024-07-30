@@ -1,2 +1,10 @@
-package com.trainingmug.ecommerce;public class Employee {
+package com.trainingmug.ecommerce;
+
+
+public class Employee {
+    /*
+
+     */
+
+   
 }

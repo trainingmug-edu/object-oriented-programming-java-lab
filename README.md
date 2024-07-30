@@ -8,8 +8,9 @@
 6. Create static variables and methods.
 7. Invoking static methods.
 ### Tasks
-1. Create a new Java class named `Employee` in the `/src/main/java` package with the following properties:
-   - empId : `long`
+1. Create a package `com.trainingmug.ecommerce` under `/src/main/java`
+2. Create a new Java class named `Employee` in the `com.trainingmug.ecommerce` package with the following properties:
+   - id : `long`
    - name : `String`
    - designation : `String`
    - grossSalary : `float`
@@ -17,34 +18,41 @@
    - federalTax : `float`
    - stateTax : `float`
 
-2. Create a no-argument constructor for Employee class to initialize the instance variables.
+3. Create a no-argument constructor for Employee class to initialize the instance variables to the following.
+   - id: 111
+   - name : Andrew Filler
+   - designation = Senior Software Engineer;
+   - grossSalary = 5208.33;
+   - federalTax = 611.86;
+   - stateTax = 359.24;
+   
+  
 
 3. Create an all-argument constructor for Employee class to initialize the
    instance variables.
 
-4. Create a method in Employee class to increase the `grossSalary` by the given percentage as follows:
-    ```java
-   public void incrementSalary(long percentage) {}
-    ```
-   
 5. Create a method in `Employee` class to display all the property values as follows:
     ```java
    public void displayProfile() {}
     ```
-6. Add the following static variables in Employee class:
+
+4. Create a method in Employee class to increase the `grossSalary` by the given percentage as follows:
+    ```java
+   public void incrementSalary(float percentage) {}
+    ```
+   
+
+6. Add the following static constant variables in Employee class:
     - companyName : `String`
     - companyContactNo : `String`
     - employeeCount : `long`
    
-7. Create a method in `Main` class that creates an object of `Employee` class and
-   initializes the properties with the given values and then returns the object:
-   ```java
-   public Employee createEmployee(long empId, String name, String designation, float grossSalary, float travellingAllowances, float federalTax, float stateTax) {}
-   ```
-   
-8. Each time the `createEmployee` method is invoked, the `employeeCount` should be incremented by 1.
 
-9. Create a static method in `Employee` class to display the company details as follows:
+   
+7. Each time the `Employee` object is created, the `employeeCount` should be incremented by 1.
+
+8. Create a static method in `Employee` class to display all the static properties and the method signature as follows:
+  
    ```java
    public static void displayCompanyInfo() {}
    ```
