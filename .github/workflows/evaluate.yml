@@ -57,6 +57,8 @@ jobs:
           passed_tests=0
           failed_tests=0
 
+          failures=()
+
           # Loop through all XML files in the directory
           for file in target/surefire-reports/*.xml; do
             if [ -f "$file" ]; then
@@ -69,17 +71,39 @@ jobs:
               total_tests=$((total_tests + tests))
               passed_tests=$((passed_tests + passed))
               failed_tests=$((failed_tests + failed))
+
+              # Iterate through testcases
+
+              # Extract each testcase that has a failure and output its failure message
+              readarray testcases < <(yq e -o=j -I=0 '.testsuite.testcase[] | select(has("failure"))' "$file")
+
+              for testcase in "${testcases[@]}"; do
+                name=`echo $testcase | yq -r '.+@name'`
+                failure_message=`echo $testcase | yq -r '.failure.+@message'`
+                expected=`echo $failure_message | grep -oP '(?<=expected: <).*?(?=> but was: <)'`
+                actual=`echo $failure_message | grep -oP '(?<=but was: <).*?(?=>)'`
+                json_failure="{\"name\": \"$name\", \"expected\": \"$expected\", \"actual\": \"$actual\"}"
+                failures+=("$json_failure")
+              done
             fi
           done
+
+          formatted_failures=$(printf '%s\n' "${failures[@]}" | sed '$!s/$/,/')
+          failures="[$formatted_failures]"
+
+          if [[ -z $failures ]]; then
+            failures="[]"
+          fi
 
           # Print the results
           echo "Total tests: $total_tests"
           echo "Total passed: $passed_tests"
           echo "Total failed: $failed_tests"
+          echo "Failures: $failures"
 
           curl \
             -X POST \
             -H "Content-Type: application/json" \
             -H "Authorization: $WEBHOOK_TOKEN" \
-            -d "{\"passedTests\": $passed_tests, \"failedTests\": $failed_tests, \"totalTests\": $total_tests, \"commitSHA\": \"$GITHUB_SHA\"}" \
+            -d "{\"passedTests\": $passed_tests, \"failedTests\": $failed_tests, \"totalTests\": $total_tests, \"failures\": $failures, \"commitSHA\": \"$GITHUB_SHA\"}" \
             $CALLBACK_URL
