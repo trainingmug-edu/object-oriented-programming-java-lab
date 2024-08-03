@@ -57,7 +57,7 @@ jobs:
           passed_tests=0
           failed_tests=0
 
-          failures=()
+          test_results=()
 
           # Loop through all XML files in the directory
           for file in target/surefire-reports/*.xml; do
@@ -75,35 +75,44 @@ jobs:
               # Iterate through testcases
 
               # Extract each testcase that has a failure and output its failure message
-              readarray testcases < <(yq e -o=j -I=0 '.testsuite.testcase[] | select(has("failure"))' "$file")
+              readarray failed_testcases < <(yq e -o=j -I=0 '.testsuite.testcase[] | select(has("failure"))' "$file")
 
-              for testcase in "${testcases[@]}"; do
+              for testcase in "${failed_testcases[@]}"; do
                 name=`echo $testcase | yq -r '.+@name'`
-                failure_message=`echo $testcase | yq -r '.failure.+@message'`
-                expected=`echo $failure_message | grep -oP '(?<=expected: <).*?(?=> but was: <)'`
-                actual=`echo $failure_message | grep -oP '(?<=but was: <).*?(?=>)'`
-                json_failure="{\"name\": \"$name\", \"expected\": \"$expected\", \"actual\": \"$actual\"}"
-                failures+=("$json_failure")
+                testcase_message=`echo $testcase | yq -r '.failure.+@message'`
+                expected=`echo $testcase_message | grep -oP '(?<=expected: <).*?(?=> but was: <)'`
+                actual=`echo $testcase_message | grep -oP '(?<=but was: <).*?(?=>)'`
+                json_test_result="{\"name\": \"$name\", \"passed\":\"false\", \"expected\": \"$expected\", \"actual\": \"$actual\"}"
+                test_results+=("$json_test_result")
+              done
+
+              # Extract each testcase that has been passed
+              readarray passed_testcases < <(yq e -o=j -I=0 '.testsuite.testcase[] | select(has("failure") | not)' "$file")
+
+              for testcase in "${passed_testcases[@]}"; do
+                name=`echo $testcase | yq -r '.+@name'`
+                json_test_result="{\"name\": \"$name\", \"passed\":\"true\", \"expected\": \"\", \"actual\": \"\"}"
+                test_results+=("$json_test_result")
               done
             fi
           done
 
-          formatted_failures=$(printf '%s\n' "${failures[@]}" | sed '$!s/$/,/')
-          failures="[$formatted_failures]"
+          formatted_test_results=$(printf '%s\n' "${test_results[@]}" | sed '$!s/$/,/')
+          test_results="[$formatted_test_results]"
 
-          if [[ -z $failures ]]; then
-            failures="[]"
+          if [[ -z $test_results ]]; then
+            test_results="[]"
           fi
 
           # Print the results
           echo "Total tests: $total_tests"
           echo "Total passed: $passed_tests"
           echo "Total failed: $failed_tests"
-          echo "Failures: $failures"
+          echo "Test results: $test_results"
 
           curl \
             -X POST \
             -H "Content-Type: application/json" \
             -H "Authorization: $WEBHOOK_TOKEN" \
-            -d "{\"passedTests\": $passed_tests, \"failedTests\": $failed_tests, \"totalTests\": $total_tests, \"failures\": $failures, \"commitSHA\": \"$GITHUB_SHA\"}" \
+            -d "{\"passedTests\": $passed_tests, \"failedTests\": $failed_tests, \"totalTests\": $total_tests, \"testResults\": $test_results, \"commitSHA\": \"$GITHUB_SHA\"}" \
             $CALLBACK_URL
