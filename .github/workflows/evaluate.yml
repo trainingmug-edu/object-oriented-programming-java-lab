@@ -3,10 +3,10 @@ on:
     inputs:
       test_files:
         description: 'Comma separated list of test files to download'
-        required: true
+        required: false
       test_files_storage_location:
         description: 'Location to store the test files'
-        required: true
+        required: false
       webhook_token:
         description: 'Token to authenticate the webhook'
         required: true
@@ -34,16 +34,20 @@ jobs:
           TEST_FILES: ${{ inputs.test_files }}
           TEST_FILES_STORAGE_LOCATION: ${{ inputs.test_files_storage_location }}
         run: |
-          # Split the files by comma
-          file_list=${TEST_FILES//,/ }
+          if [ -n "$TEST_FILES" ]; then
+            # Split the files by comma
+            file_list=${TEST_FILES//,/ }
 
-          # Download the files
-          for file in $file_list; do
-            fn="${file##*/}"
-            file_name="${fn%\?*}" # Get the file name
-            echo "Downloading $file_name in $TEST_FILES_STORAGE_LOCATION"
-            curl --create-dirs --output-dir $TEST_FILES_STORAGE_LOCATION -o $file_name $file
-          done
+            # Download the files
+            for file in $file_list; do
+              fn="${file##*/}"
+              file_name="${fn%\?*}" # Get the file name
+              echo "Downloading $file_name in $TEST_FILES_STORAGE_LOCATION"
+              curl --create-dirs --output-dir $TEST_FILES_STORAGE_LOCATION -o $file_name $file
+            done
+          else
+            echo "TEST_FILES is null or empty. No files to download."
+          fi
       - name: Run the tests
         run: mvn test
         continue-on-error: true
