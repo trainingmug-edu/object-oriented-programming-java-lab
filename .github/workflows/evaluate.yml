@@ -57,11 +57,12 @@ jobs:
           CALLBACK_URL: ${{ inputs.callback_url }}
         run: |
           # Initialize global counters
-          total_tests=0
-          passed_tests=0
-          failed_tests=0
+          total_tests_count=0
+          passed_tests_count=0
+          failed_tests_count=0
 
-          test_results=()
+          failed_tests=()
+          passed_tests=()
 
           # Loop through all XML files in the directory
           for file in target/surefire-reports/*.xml; do
@@ -72,9 +73,9 @@ jobs:
               passed=$((tests - failed))
 
               # Accumulate the results
-              total_tests=$((total_tests + tests))
-              passed_tests=$((passed_tests + passed))
-              failed_tests=$((failed_tests + failed))
+              total_tests_count=$((total_tests_count + tests))
+              passed_tests_count=$((passed_tests_count + passed))
+              failed_tests_count=$((failed_tests_count + failed))
 
               # Iterate through testcases
 
@@ -86,8 +87,8 @@ jobs:
                 testcase_message=`echo $testcase | yq -r '.failure.+@message'`
                 expected=`echo $testcase_message | grep -oP '(?<=expected: <).*?(?=> but was: <)'`
                 actual=`echo $testcase_message | grep -oP '(?<=but was: <).*?(?=>)'`
-                json_test_result="{\"name\": \"$name\", \"passed\":\"false\", \"expected\": \"$expected\", \"actual\": \"$actual\"}"
-                test_results+=("$json_test_result")
+                json_test_result="{\"name\": \"$name\", \"expectedOutput\": \"$expected\", \"actualOutput\": \"$actual\"}"
+                failed_tests+=("$json_test_result")
               done
 
               # Extract each testcase that has been passed
@@ -95,28 +96,37 @@ jobs:
 
               for testcase in "${passed_testcases[@]}"; do
                 name=`echo $testcase | yq -r '.+@name'`
-                json_test_result="{\"name\": \"$name\", \"passed\":\"true\", \"expected\": \"\", \"actual\": \"\"}"
-                test_results+=("$json_test_result")
+                passed_tests+=("\"$name\"")
               done
             fi
           done
 
-          formatted_test_results=$(printf '%s\n' "${test_results[@]}" | sed '$!s/$/,/')
-          test_results="[$formatted_test_results]"
+          formatted_failed_tests=$(printf '%s\n' "${failed_tests[@]}" | sed '$!s/$/,/')
+          failed_tests="[$formatted_failed_tests]"
 
-          if [[ -z $test_results ]]; then
-            test_results="[]"
+          formatted_passed_tests=$(printf '%s\n' "${passed_tests[@]}" | sed '$!s/$/,/')
+          passed_tests="[$formatted_passed_tests]"
+
+          if [[ -z $failed_tests ]]; then
+            failed_tests="[]"
           fi
 
+          if [[ -z $passed_tests ]]; then
+            passed_tests="[]"
+          fi
+
+          
+
           # Print the results
-          echo "Total tests: $total_tests"
-          echo "Total passed: $passed_tests"
-          echo "Total failed: $failed_tests"
-          echo "Test results: $test_results"
+          echo "Total tests: $total_tests_count"
+          echo "Total passed: $passed_tests_count"
+          echo "Total failed: $failed_tests_count"
+          echo "Failed Tests: $failed_tests"
+          echo "Passed Tests: $passed_tests"
 
           curl \
             -X POST \
             -H "Content-Type: application/json" \
             -H "Authorization: $WEBHOOK_TOKEN" \
-            -d "{\"passedTests\": $passed_tests, \"failedTests\": $failed_tests, \"totalTests\": $total_tests, \"testResults\": $test_results, \"commitSHA\": \"$GITHUB_SHA\"}" \
+            -d "{\"passedTests\": $passed_tests_count, \"failedTests\": $failed_tests_count, \"totalTests\": $total_tests_count, \"passedCases\": $passed_tests, \"failedCases\": $failed_tests, \"commitSHA\": \"$GITHUB_SHA\"}" \
             $CALLBACK_URL
